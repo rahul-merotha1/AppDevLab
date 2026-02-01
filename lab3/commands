@@ -1,0 +1,6 @@
+npm install express mysql2 cors
+the register and login page should be inside the appache htdocs
+server code can be any where
+first run the appache and start the server and mysql
+http://localhost/dashboard/
+http://localhost/phpmyadmin/ create the database inside the mysql
