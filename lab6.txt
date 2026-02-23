@@ -1,0 +1,251 @@
+🗄 1️⃣ SQL CODE (Run in MySQL First)
+CREATE DATABASE authlab;
+USE authlab;
+
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE,
+    password VARCHAR(255)
+);
+
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100),
+    description TEXT
+);
+
+INSERT INTO products (name, description) VALUES
+('Laptop', 'Gaming laptop with 16GB RAM'),
+('Phone', 'Android smartphone'),
+('Headphones', 'Noise cancelling headphones'),
+('Mouse', 'Wireless optical mouse');
+📁 2️⃣ Project Structure
+authlab/
+│── server.js
+│── db.js
+│── package.json
+│── public/
+    │── index.html
+📦 3️⃣ Install Packages
+
+Inside project folder:
+
+npm init -y
+npm install express mysql2 bcrypt body-parser cors
+🔌 4️⃣ db.js (Database Connection)
+const mysql = require('mysql2');
+
+const db = mysql.createConnection({
+    host: 'localhost',
+    user: 'root',
+    password: '',
+    database: 'authlab'
+});
+
+db.connect(err => {
+    if (err) throw err;
+    console.log("MySQL Connected");
+});
+
+module.exports = db;
+🚀 5️⃣ server.js (Backend Complete)
+const express = require('express');
+const bcrypt = require('bcrypt');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const db = require('./db');
+
+const app = express();
+app.use(bodyParser.json());
+app.use(cors());
+app.use(express.static('public'));
+
+
+// REGISTER
+app.post('/register', async (req, res) => {
+    const { username, password } = req.body;
+    const hashed = await bcrypt.hash(password, 10);
+
+    db.query(
+        'INSERT INTO users (username, password) VALUES (?, ?)',
+        [username, hashed],
+        (err) => {
+            if (err) return res.json({ message: "User already exists" });
+            res.json({ message: "Registration Successful" });
+        }
+    );
+});
+
+
+// LOGIN
+app.post('/login', (req, res) => {
+    const { username, password } = req.body;
+
+    db.query(
+        'SELECT * FROM users WHERE username = ?',
+        [username],
+        async (err, results) => {
+            if (results.length === 0)
+                return res.json({ message: "User not found" });
+
+            const match = await bcrypt.compare(password, results[0].password);
+
+            if (match)
+                res.json({ message: "Login Successful" });
+            else
+                res.json({ message: "Wrong Password" });
+        }
+    );
+});
+
+
+// KEYWORD SEARCH
+app.get('/search', (req, res) => {
+    const keyword = req.query.q;
+
+    db.query(
+        `SELECT * FROM products 
+         WHERE name LIKE ? OR description LIKE ?`,
+        [`%${keyword}%`, `%${keyword}%`],
+        (err, results) => {
+            res.json(results);
+        }
+    );
+});
+
+
+// SPELL CHECK USING SOUNDEX
+app.get('/spellcheck', (req, res) => {
+    const word = req.query.q;
+
+    db.query(
+        `SELECT * FROM products 
+         WHERE SOUNDEX(name) = SOUNDEX(?)`,
+        [word],
+        (err, results) => {
+            res.json(results);
+        }
+    );
+});
+
+
+app.listen(3000, () => {
+    console.log("Server running at http://localhost:3000");
+});
+🌐 6️⃣ public/index.html (Frontend Complete)
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Lab</title>
+</head>
+<body>
+
+<h2>Register</h2>
+<input id="regUser" placeholder="Username">
+<input id="regPass" type="password" placeholder="Password">
+<button onclick="register()">Register</button>
+<p id="regMsg"></p>
+
+<hr>
+
+<h2>Login</h2>
+<input id="logUser" placeholder="Username">
+<input id="logPass" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+<p id="logMsg"></p>
+
+<hr>
+
+<h2>Search Products</h2>
+<input id="searchInput" placeholder="Enter keyword">
+<button onclick="search()">Search</button>
+<button onclick="spell()">Spell Check</button>
+
+<ul id="results"></ul>
+
+<script>
+
+async function register() {
+    const username = regUser.value;
+    const password = regPass.value;
+
+    const res = await fetch('/register', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ username, password })
+    });
+
+    const data = await res.json();
+    regMsg.innerText = data.message;
+}
+
+async function login() {
+    const username = logUser.value;
+    const password = logPass.value;
+
+    const res = await fetch('/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ username, password })
+    });
+
+    const data = await res.json();
+    logMsg.innerText = data.message;
+}
+
+async function search() {
+    const keyword = searchInput.value;
+
+    const res = await fetch(`/search?q=${keyword}`);
+    const data = await res.json();
+
+    displayResults(data);
+}
+
+async function spell() {
+    const keyword = searchInput.value;
+
+    const res = await fetch(`/spellcheck?q=${keyword}`);
+    const data = await res.json();
+
+    displayResults(data);
+}
+
+function displayResults(data) {
+    results.innerHTML = "";
+    data.forEach(item => {
+        const li = document.createElement('li');
+        li.innerText = item.name + " - " + item.description;
+        results.appendChild(li);
+    });
+}
+
+</script>
+
+</body>
+</html>
+▶️ 7️⃣ Run the Project
+
+Start MySQL first.
+
+Then:
+
+node server.js
+
+Open:
+
+http://localhost:3000
+🎓 Viva Questions Ready
+
+❓ Why use bcrypt?
+→ To securely hash passwords.
+
+❓ Why use ? in SQL query?
+→ To prevent SQL Injection.
+
+❓ Difference between LIKE and SOUNDEX?
+→ LIKE matches pattern.
+→ SOUNDEX matches similar sounding words.
+
+❓ What happens at server during login?
+→ Server fetches user → compares hashed password → returns response.
